@@ -196,6 +196,111 @@ class TransferServiceTest extends TestCase
         $this->transferService->transfer(1, 1, 2, '1000.00');
     }
 
+    public function testTransferAtExactFraudThresholdIsPending(): void
+    {
+        $fromWallet = Wallet::create(1, Currency::EUR);
+        $fromWallet->setBalance(20000.0);
+        $toWallet = Wallet::create(1, Currency::GBP);
+
+        $this->walletRepository
+            ->method('findById')
+            ->willReturnMap([
+                [1, $fromWallet],
+                [2, $toWallet],
+            ]);
+
+        $this->exchangeRateService
+            ->method('getExchangeRateBetween')
+            ->willReturnMap([
+                [Currency::EUR, Currency::GBP, 0.87],
+                [Currency::EUR, Currency::EUR, 1.0],
+            ]);
+
+        $this->spreadService
+            ->method('calculateSpread')
+            ->willReturn('65.25');
+
+        $this->transactionRepository
+            ->expects(self::once())
+            ->method('save')
+            ->with($this->isInstanceOf(Transaction::class));
+
+        $transaction = $this->transferService->transfer(1, 1, 2, '15000.00');
+
+        self::assertSame(TransactionStatus::PENDING, $transaction->getStatus());
+        self::assertFalse($transaction->requiresAntiFraudCheck());
+    }
+
+    public function testTransferAboveFraudThresholdRequiresFraudReview(): void
+    {
+        $fromWallet = Wallet::create(1, Currency::EUR);
+        $fromWallet->setBalance(20000.0);
+        $toWallet = Wallet::create(1, Currency::GBP);
+
+        $this->walletRepository
+            ->method('findById')
+            ->willReturnMap([
+                [1, $fromWallet],
+                [2, $toWallet],
+            ]);
+
+        $this->exchangeRateService
+            ->method('getExchangeRateBetween')
+            ->willReturnMap([
+                [Currency::EUR, Currency::GBP, 0.87],
+                [Currency::EUR, Currency::EUR, 1.0],
+            ]);
+
+        $this->spreadService
+            ->method('calculateSpread')
+            ->willReturn('69.60');
+
+        $this->transactionRepository
+            ->expects(self::once())
+            ->method('save')
+            ->with($this->isInstanceOf(Transaction::class));
+
+        $transaction = $this->transferService->transfer(1, 1, 2, '16000.00');
+
+        self::assertSame(TransactionStatus::FRAUD_REVIEW, $transaction->getStatus());
+        self::assertTrue($transaction->requiresAntiFraudCheck());
+    }
+
+    public function testTransferNonEurPairFlaggedByEurEquivalent(): void
+    {
+        $fromWallet = Wallet::create(1, Currency::USD);
+        $fromWallet->setBalance(25000.0);
+        $toWallet = Wallet::create(1, Currency::GBP);
+
+        $this->walletRepository
+            ->method('findById')
+            ->willReturnMap([
+                [1, $fromWallet],
+                [2, $toWallet],
+            ]);
+
+        $this->exchangeRateService
+            ->method('getExchangeRateBetween')
+            ->willReturnMap([
+                [Currency::USD, Currency::GBP, 0.8],
+                [Currency::USD, Currency::EUR, 0.92],
+            ]);
+
+        $this->spreadService
+            ->method('calculateSpread')
+            ->willReturn('80.00');
+
+        $this->transactionRepository
+            ->expects(self::once())
+            ->method('save')
+            ->with($this->isInstanceOf(Transaction::class));
+
+        $transaction = $this->transferService->transfer(1, 1, 2, '20000.00');
+
+        self::assertSame(TransactionStatus::FRAUD_REVIEW, $transaction->getStatus());
+        self::assertTrue($transaction->requiresAntiFraudCheck());
+    }
+
     public function testTransferThrowsWhenFromWalletBelongsToOtherUser(): void
     {
         $fromWallet = Wallet::create(2, Currency::PLN);

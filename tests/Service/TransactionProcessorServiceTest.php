@@ -226,21 +226,13 @@ class TransactionProcessorServiceTest extends TestCase
     {
         $transaction = $this->makeTransaction(requiresAntiFraudCheck: false);
 
-        $wallet = $this->createStub(Wallet::class);
-
         $this->transactionRepository
             ->expects(self::once())
             ->method('save')
             ->with($transaction);
-        $this->walletRepository
-            ->expects($this->once())
-            ->method('findById')
-            ->with(1)
-            ->willReturn($wallet);
-        $this->walletRepository
-            ->expects($this->once())
-            ->method('save')
-            ->with($wallet);
+        $this->walletRepository->expects(self::never())->method('findById');
+        $this->walletRepository->expects(self::never())->method('save');
+        $this->companyWalletRepository->expects(self::never())->method('addToBalance');
 
         $this->transactionProcessorService->reject($transaction);
 
