@@ -97,8 +97,8 @@ readonly class TransactionRepository implements TransactionRepositoryInterface
     {
         return new Transaction(
             id: (int) $row['id'],
-            fromWalletId: (int) $row['from_wallet_id'],
-            toWalletId: (int) $row['to_wallet_id'],
+            fromWalletId: null !== $row['from_wallet_id'] ? (int) $row['from_wallet_id'] : null,
+            toWalletId: null !== $row['to_wallet_id'] ? (int) $row['to_wallet_id'] : null,
             fromAmount: (string) $row['from_amount'],
             toAmount: (string) $row['to_amount'],
             fromCurrency: Currency::from($row['from_currency']),

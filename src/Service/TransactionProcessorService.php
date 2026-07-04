@@ -22,8 +22,11 @@ final readonly class TransactionProcessorService
 
     public function complete(Transaction $transaction): void
     {
-        $fromWallet = $this->walletRepository->findById($transaction->getFromWalletId());
-        $toWallet = $this->walletRepository->findById($transaction->getToWalletId());
+        $fromWalletId = $transaction->getFromWalletId();
+        $toWalletId = $transaction->getToWalletId();
+
+        $fromWallet = null !== $fromWalletId ? $this->walletRepository->findById($fromWalletId) : null;
+        $toWallet = null !== $toWalletId ? $this->walletRepository->findById($toWalletId) : null;
 
         if (null === $fromWallet || null === $toWallet) {
             $this->reject($transaction);

@@ -12,8 +12,8 @@ class Transaction
 {
     public function __construct(
         private ?int $id,
-        private readonly int $fromWalletId,
-        private readonly int $toWalletId,
+        private readonly ?int $fromWalletId,
+        private readonly ?int $toWalletId,
         private readonly string $fromAmount,
         private readonly string $toAmount,
         private readonly Currency $fromCurrency,
@@ -62,12 +62,12 @@ class Transaction
         return $this->id;
     }
 
-    public function getFromWalletId(): int
+    public function getFromWalletId(): ?int
     {
         return $this->fromWalletId;
     }
 
-    public function getToWalletId(): int
+    public function getToWalletId(): ?int
     {
         return $this->toWalletId;
     }

@@ -13,6 +13,8 @@ use App\Enum\TransactionStatus;
 use App\Exception\InsufficientFundsException;
 use App\Exception\WalletAlreadyExistsException;
 use App\Exception\WalletBlockedException;
+use App\Exception\WalletHasUnsettledTransactionsException;
+use App\Exception\WalletNotEmptyException;
 use App\Exception\WalletNotFoundException;
 use App\Repository\WalletRepositoryInterface;
 use App\Service\DepositService;
@@ -508,5 +510,98 @@ class WalletControllerTest extends TestCase
 
         $data = json_decode($response->getContent(), true, 512, JSON_THROW_ON_ERROR);
         self::assertSame('Wallet 5 is blocked.', $data['error']);
+    }
+
+    /**
+     * @throws Throwable
+     */
+    public function testDeleteWalletSuccessfully(): void
+    {
+        $user = new User(1, 'test@example.com', ['ROLE_USER'], new DateTimeImmutable());
+
+        $this->walletService
+            ->expects(self::once())
+            ->method('deleteWallet')
+            ->with(1, 5);
+
+        $response = $this->controller->delete(5, $user);
+
+        self::assertSame(204, $response->getStatusCode());
+    }
+
+    /**
+     * @throws Throwable
+     */
+    public function testDeleteReturnsNotFoundWhenWalletNotFound(): void
+    {
+        $user = new User(1, 'test@example.com', ['ROLE_USER'], new DateTimeImmutable());
+
+        $this->walletService
+            ->method('deleteWallet')
+            ->willThrowException(new WalletNotFoundException(99));
+
+        $response = $this->controller->delete(99, $user);
+
+        self::assertSame(404, $response->getStatusCode());
+
+        $data = json_decode($response->getContent(), true, 512, JSON_THROW_ON_ERROR);
+        self::assertSame('Wallet 99 not found.', $data['error']);
+    }
+
+    /**
+     * @throws Throwable
+     */
+    public function testDeleteReturnsUnprocessableWhenWalletBlocked(): void
+    {
+        $user = new User(1, 'test@example.com', ['ROLE_USER'], new DateTimeImmutable());
+
+        $this->walletService
+            ->method('deleteWallet')
+            ->willThrowException(new WalletBlockedException(5));
+
+        $response = $this->controller->delete(5, $user);
+
+        self::assertSame(422, $response->getStatusCode());
+
+        $data = json_decode($response->getContent(), true, 512, JSON_THROW_ON_ERROR);
+        self::assertSame('Wallet 5 is blocked.', $data['error']);
+    }
+
+    /**
+     * @throws Throwable
+     */
+    public function testDeleteReturnsConflictWhenWalletNotEmpty(): void
+    {
+        $user = new User(1, 'test@example.com', ['ROLE_USER'], new DateTimeImmutable());
+
+        $this->walletService
+            ->method('deleteWallet')
+            ->willThrowException(new WalletNotEmptyException(5));
+
+        $response = $this->controller->delete(5, $user);
+
+        self::assertSame(409, $response->getStatusCode());
+
+        $data = json_decode($response->getContent(), true, 512, JSON_THROW_ON_ERROR);
+        self::assertSame('Wallet 5 is not empty.', $data['error']);
+    }
+
+    /**
+     * @throws Throwable
+     */
+    public function testDeleteReturnsConflictWhenWalletHasUnsettledTransactions(): void
+    {
+        $user = new User(1, 'test@example.com', ['ROLE_USER'], new DateTimeImmutable());
+
+        $this->walletService
+            ->method('deleteWallet')
+            ->willThrowException(new WalletHasUnsettledTransactionsException(5));
+
+        $response = $this->controller->delete(5, $user);
+
+        self::assertSame(409, $response->getStatusCode());
+
+        $data = json_decode($response->getContent(), true, 512, JSON_THROW_ON_ERROR);
+        self::assertSame('Wallet 5 has unsettled transactions.', $data['error']);
     }
 }

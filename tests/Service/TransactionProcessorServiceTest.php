@@ -12,6 +12,7 @@ use App\Repository\CompanyWalletRepositoryInterface;
 use App\Repository\TransactionRepositoryInterface;
 use App\Repository\WalletRepositoryInterface;
 use App\Service\TransactionProcessorService;
+use DateTimeImmutable;
 use PHPUnit\Framework\Attributes\AllowMockObjectsWithoutExpectations;
 use PHPUnit\Framework\TestCase;
 
@@ -132,6 +133,38 @@ class TransactionProcessorServiceTest extends TestCase
                 [1, $fromWallet],
                 [2, null],
             ]);
+
+        $this->walletRepository->expects(self::never())->method('save');
+        $this->companyWalletRepository->expects(self::never())->method('addToBalance');
+
+        $this->transactionProcessorService->complete($transaction);
+
+        self::assertSame(TransactionStatus::REJECTED, $transaction->getStatus());
+    }
+
+    public function testCompleteRejectsWhenFromWalletIdIsNull(): void
+    {
+        $transaction = new Transaction(
+            id: 42,
+            fromWalletId: null,
+            toWalletId: 2,
+            fromAmount: '100.0000',
+            toAmount: '25.0000',
+            fromCurrency: Currency::PLN,
+            toCurrency: Currency::EUR,
+            spread: '0.5000',
+            exchangeRate: '0.250000',
+            status: TransactionStatus::PENDING,
+            requiresAntiFraudCheck: false,
+            antiFraudCheckedAt: null,
+            createdAt: new DateTimeImmutable(),
+        );
+
+        $this->walletRepository
+            ->expects(self::once())
+            ->method('findById')
+            ->with(2)
+            ->willReturn(Wallet::create(1, Currency::EUR));
 
         $this->walletRepository->expects(self::never())->method('save');
         $this->companyWalletRepository->expects(self::never())->method('addToBalance');
