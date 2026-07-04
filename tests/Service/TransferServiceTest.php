@@ -8,6 +8,7 @@ use App\Entity\Transaction;
 use App\Entity\Wallet;
 use App\Enum\Currency;
 use App\Enum\TransactionStatus;
+use App\Exception\InsufficientFundsException;
 use App\Exception\WalletNotFoundException;
 use App\Repository\TransactionRepositoryInterface;
 use App\Repository\WalletRepositoryInterface;
@@ -156,6 +157,27 @@ class TransferServiceTest extends TestCase
         $this->expectExceptionMessage('Wallet 99 not found.');
 
         $this->transferService->transfer(1, 1, 99, '100.00');
+    }
+
+    public function testTransferThrowsWhenInsufficientFunds(): void
+    {
+        $fromWallet = Wallet::create(1, Currency::PLN);
+        $fromWallet->setBalance(500.0);
+        $toWallet = Wallet::create(1, Currency::EUR);
+
+        $this->walletRepository
+            ->method('findById')
+            ->willReturnMap([
+                [1, $fromWallet],
+                [2, $toWallet],
+            ]);
+
+        $this->transactionRepository->expects(self::never())->method('save');
+
+        $this->expectException(InsufficientFundsException::class);
+        $this->expectExceptionMessage('Insufficient funds in wallet 1.');
+
+        $this->transferService->transfer(1, 1, 2, '1000.00');
     }
 
     public function testTransferThrowsWhenFromWalletBelongsToOtherUser(): void
