@@ -123,6 +123,26 @@ class WalletControllerTest extends TestCase
     /**
      * @throws Throwable
      */
+    public function testCreateReturnsBadRequestWhenBodyIsInvalidJson(): void
+    {
+        $user = new User(1, 'test@example.com', ['ROLE_USER'], new DateTimeImmutable());
+
+        $this->walletService
+            ->expects(self::never())
+            ->method('createWallet');
+
+        $request = new Request(content: '{invalid');
+        $response = $this->controller->create($request, $user);
+
+        self::assertSame(400, $response->getStatusCode());
+
+        $data = json_decode($response->getContent(), true, 512, JSON_THROW_ON_ERROR);
+        self::assertSame('Invalid JSON body.', $data['error']);
+    }
+
+    /**
+     * @throws Throwable
+     */
     public function testCreateReturnsConflictWhenWalletAlreadyExists(): void
     {
         $user = new User(1, 'test@example.com', ['ROLE_USER'], new DateTimeImmutable());
@@ -273,6 +293,26 @@ class WalletControllerTest extends TestCase
     /**
      * @throws Throwable
      */
+    public function testTransferReturnsBadRequestWhenBodyIsInvalidJson(): void
+    {
+        $user = new User(1, 'test@example.com', ['ROLE_USER'], new DateTimeImmutable());
+
+        $this->transferService
+            ->expects(self::never())
+            ->method('transfer');
+
+        $request = new Request(content: '{invalid');
+        $response = $this->controller->transfer($request, $user);
+
+        self::assertSame(400, $response->getStatusCode());
+
+        $data = json_decode($response->getContent(), true, 512, JSON_THROW_ON_ERROR);
+        self::assertSame('Invalid JSON body.', $data['error']);
+    }
+
+    /**
+     * @throws Throwable
+     */
     public function testTransferReturnsNotFoundWhenWalletNotFound(): void
     {
         $user = new User(1, 'test@example.com', ['ROLE_USER'], new DateTimeImmutable());
@@ -408,6 +448,26 @@ class WalletControllerTest extends TestCase
 
         $data = json_decode($response->getContent(), true, 512, JSON_THROW_ON_ERROR);
         self::assertSame(sprintf('Amount cannot exceed %s.', DepositService::MAX_AMOUNT), $data['error']);
+    }
+
+    /**
+     * @throws Throwable
+     */
+    public function testDepositReturnsBadRequestWhenBodyIsInvalidJson(): void
+    {
+        $user = new User(1, 'test@example.com', ['ROLE_USER'], new DateTimeImmutable());
+
+        $this->depositService
+            ->expects(self::never())
+            ->method('deposit');
+
+        $request = new Request(content: '{invalid');
+        $response = $this->controller->deposit(5, $request, $user);
+
+        self::assertSame(400, $response->getStatusCode());
+
+        $data = json_decode($response->getContent(), true, 512, JSON_THROW_ON_ERROR);
+        self::assertSame('Invalid JSON body.', $data['error']);
     }
 
     /**

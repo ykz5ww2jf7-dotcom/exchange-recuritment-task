@@ -44,13 +44,14 @@ final class WalletController extends AbstractController
         return new JsonResponse(array_map(static fn ($w) => new WalletResponse($w), $wallets));
     }
 
-    /**
-     * @throws JsonException
-     */
     #[Route('', methods: ['POST'])]
     public function create(Request $request, #[CurrentUser] User $user): JsonResponse
     {
-        $data = json_decode($request->getContent(), true, 512, JSON_THROW_ON_ERROR) ?? [];
+        try {
+            $data = json_decode($request->getContent(), true, 512, JSON_THROW_ON_ERROR) ?? [];
+        } catch (JsonException) {
+            return new JsonResponse(['error' => 'Invalid JSON body.'], Response::HTTP_BAD_REQUEST);
+        }
 
         if (!isset($data['currency'])) {
             return new JsonResponse(['error' => 'Missing required field: currency.'], Response::HTTP_BAD_REQUEST);
@@ -71,13 +72,14 @@ final class WalletController extends AbstractController
         return new JsonResponse(new WalletResponse($wallet), Response::HTTP_CREATED);
     }
 
-    /**
-     * @throws JsonException
-     */
     #[Route('/transfer', methods: ['POST'])]
     public function transfer(Request $request, #[CurrentUser] User $user): JsonResponse
     {
-        $data = json_decode($request->getContent(), true, 512, JSON_THROW_ON_ERROR) ?? [];
+        try {
+            $data = json_decode($request->getContent(), true, 512, JSON_THROW_ON_ERROR) ?? [];
+        } catch (JsonException) {
+            return new JsonResponse(['error' => 'Invalid JSON body.'], Response::HTTP_BAD_REQUEST);
+        }
 
         foreach (['fromWalletId', 'toWalletId', 'amount'] as $field) {
             if (!isset($data[$field])) {
@@ -111,13 +113,14 @@ final class WalletController extends AbstractController
         return new JsonResponse(new TransactionResponse($transaction), Response::HTTP_CREATED);
     }
 
-    /**
-     * @throws JsonException
-     */
     #[Route('/{id}/deposit', methods: ['POST'])]
     public function deposit(int $id, Request $request, #[CurrentUser] User $user): JsonResponse
     {
-        $data = json_decode($request->getContent(), true, 512, JSON_THROW_ON_ERROR) ?? [];
+        try {
+            $data = json_decode($request->getContent(), true, 512, JSON_THROW_ON_ERROR) ?? [];
+        } catch (JsonException) {
+            return new JsonResponse(['error' => 'Invalid JSON body.'], Response::HTTP_BAD_REQUEST);
+        }
 
         if (!isset($data['amount'])) {
             return new JsonResponse(['error' => 'Missing required field: amount.'], Response::HTTP_BAD_REQUEST);
