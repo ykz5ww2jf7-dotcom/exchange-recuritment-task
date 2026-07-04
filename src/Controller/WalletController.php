@@ -89,6 +89,10 @@ final class WalletController extends AbstractController
             return new JsonResponse(['error' => 'Amount must be a positive number.'], Response::HTTP_BAD_REQUEST);
         }
 
+        if ((int) $data['fromWalletId'] === (int) $data['toWalletId']) {
+            return new JsonResponse(['error' => 'Cannot transfer to the same wallet.'], Response::HTTP_BAD_REQUEST);
+        }
+
         try {
             $transaction = $this->transferService->transfer(
                 $user->getIdNotNull(),
