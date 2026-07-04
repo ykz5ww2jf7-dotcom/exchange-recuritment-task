@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Service;
 
 use App\Entity\Transaction;
+use App\Enum\Currency;
 use App\Exception\WalletNotFoundException;
 use App\Repository\TransactionRepositoryInterface;
 use App\Repository\WalletRepositoryInterface;
@@ -37,13 +38,16 @@ readonly class TransferService
 
         $fromCurrency = $fromWallet->getCurrency();
         $toCurrency = $toWallet->getCurrency();
+        $fraudThreshold = 15000.0;
 
         $exchangeRate = $this->exchangeRateService->getExchangeRateBetween($fromCurrency, $toCurrency);
         $rawToAmount = (float) $fromAmount * $exchangeRate;
         $spread = $this->spreadService->calculateSpread($rawToAmount, $fromCurrency, $toCurrency);
-        $toAmount = $rawToAmount - (float) $spread;
+        $netToAmount = $rawToAmount - (float) $spread;
 
-        $toAmountFormatted = number_format($toAmount, 4, '.', '');
+        $toAmountFormatted = number_format($netToAmount, 4, '.', '');
+
+        $eurValue = (float) $fromAmount * $this->exchangeRateService->getExchangeRateBetween($fromCurrency, Currency::EUR);
 
         $transaction = Transaction::create(
             fromWalletId: $fromWalletId,
@@ -54,7 +58,7 @@ readonly class TransferService
             toCurrency: $toCurrency,
             spread: $spread,
             exchangeRate: number_format($exchangeRate, 6, '.', ''),
-            requiresAntiFraudCheck: $toAmount > 15_000,
+            requiresAntiFraudCheck: $eurValue > $fraudThreshold,
         );
 
         $this->transactionRepository->save($transaction);
