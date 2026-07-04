@@ -31,6 +31,12 @@ final readonly class TransactionProcessorService
             return;
         }
 
+        if ($fromWallet->isBlocked() || $toWallet->isBlocked()) {
+            $this->reject($transaction);
+
+            return;
+        }
+
         if ($fromWallet->getBalance() < (float) $transaction->getFromAmount()) {
             $this->reject($transaction);
 

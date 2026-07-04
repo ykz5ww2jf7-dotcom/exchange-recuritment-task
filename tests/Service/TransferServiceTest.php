@@ -9,6 +9,7 @@ use App\Entity\Wallet;
 use App\Enum\Currency;
 use App\Enum\TransactionStatus;
 use App\Exception\InsufficientFundsException;
+use App\Exception\WalletBlockedException;
 use App\Exception\WalletNotFoundException;
 use App\Repository\TransactionRepositoryInterface;
 use App\Repository\WalletRepositoryInterface;
@@ -176,6 +177,50 @@ class TransferServiceTest extends TestCase
 
         $this->expectException(InsufficientFundsException::class);
         $this->expectExceptionMessage('Insufficient funds in wallet 1.');
+
+        $this->transferService->transfer(1, 1, 2, '1000.00');
+    }
+
+    public function testTransferThrowsWhenFromWalletBlocked(): void
+    {
+        $fromWallet = Wallet::create(1, Currency::PLN);
+        $fromWallet->setBalance(500.0);
+        $fromWallet->setIsBlocked(true);
+        $toWallet = Wallet::create(1, Currency::EUR);
+
+        $this->walletRepository
+            ->method('findById')
+            ->willReturnMap([
+                [1, $fromWallet],
+                [2, $toWallet],
+            ]);
+
+        $this->transactionRepository->expects(self::never())->method('save');
+
+        $this->expectException(WalletBlockedException::class);
+        $this->expectExceptionMessage('Wallet 1 is blocked.');
+
+        $this->transferService->transfer(1, 1, 2, '1000.00');
+    }
+
+    public function testTransferThrowsWhenToWalletBlocked(): void
+    {
+        $fromWallet = Wallet::create(1, Currency::PLN);
+        $fromWallet->setBalance(5000.0);
+        $toWallet = Wallet::create(1, Currency::EUR);
+        $toWallet->setIsBlocked(true);
+
+        $this->walletRepository
+            ->method('findById')
+            ->willReturnMap([
+                [1, $fromWallet],
+                [2, $toWallet],
+            ]);
+
+        $this->transactionRepository->expects(self::never())->method('save');
+
+        $this->expectException(WalletBlockedException::class);
+        $this->expectExceptionMessage('Wallet 2 is blocked.');
 
         $this->transferService->transfer(1, 1, 2, '1000.00');
     }
