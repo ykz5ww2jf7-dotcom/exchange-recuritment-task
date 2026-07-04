@@ -14,8 +14,7 @@ security:
       custom_authenticators:
         - App\Security\TokenAuthenticator
   access_control:
-  # - { path: ^/admin, roles: ROLE_ADMIN }
-  # - { path: ^/profile, roles: ROLE_USER }
+    - { path: ^/api, roles: IS_AUTHENTICATED_FULLY }
 
 when@test:
   security:
