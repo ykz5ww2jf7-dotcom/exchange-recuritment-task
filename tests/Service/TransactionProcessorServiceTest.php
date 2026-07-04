@@ -8,6 +8,7 @@ use App\Entity\Transaction;
 use App\Entity\Wallet;
 use App\Enum\Currency;
 use App\Enum\TransactionStatus;
+use App\Repository\CompanyWalletRepositoryInterface;
 use App\Repository\TransactionRepositoryInterface;
 use App\Repository\WalletRepositoryInterface;
 use App\Service\TransactionProcessorService;
@@ -19,16 +20,19 @@ class TransactionProcessorServiceTest extends TestCase
 {
     private WalletRepositoryInterface $walletRepository;
     private TransactionRepositoryInterface $transactionRepository;
+    private CompanyWalletRepositoryInterface $companyWalletRepository;
     private TransactionProcessorService $transactionProcessorService;
 
     protected function setUp(): void
     {
         $this->walletRepository = $this->createMock(WalletRepositoryInterface::class);
         $this->transactionRepository = $this->createMock(TransactionRepositoryInterface::class);
+        $this->companyWalletRepository = $this->createMock(CompanyWalletRepositoryInterface::class);
 
         $this->transactionProcessorService = new TransactionProcessorService(
             $this->walletRepository,
             $this->transactionRepository,
+            $this->companyWalletRepository,
         );
     }
 
@@ -58,6 +62,11 @@ class TransactionProcessorServiceTest extends TestCase
             ->expects(self::once())
             ->method('save')
             ->with($transaction);
+
+        $this->companyWalletRepository
+            ->expects(self::once())
+            ->method('addToBalance')
+            ->with(Currency::EUR, '0.5000');
 
         $this->transactionProcessorService->complete($transaction);
 
@@ -103,6 +112,7 @@ class TransactionProcessorServiceTest extends TestCase
             ]);
 
         $this->walletRepository->expects(self::never())->method('save');
+        $this->companyWalletRepository->expects(self::never())->method('addToBalance');
 
         $this->transactionProcessorService->complete($transaction);
 
@@ -124,6 +134,7 @@ class TransactionProcessorServiceTest extends TestCase
             ]);
 
         $this->walletRepository->expects(self::never())->method('save');
+        $this->companyWalletRepository->expects(self::never())->method('addToBalance');
 
         $this->transactionProcessorService->complete($transaction);
 
@@ -159,6 +170,8 @@ class TransactionProcessorServiceTest extends TestCase
     public function testRejectSetsAntiFraudCheckedAtWhenRequired(): void
     {
         $transaction = $this->makeTransaction(requiresAntiFraudCheck: true);
+
+        $this->companyWalletRepository->expects(self::never())->method('addToBalance');
 
         $this->transactionProcessorService->reject($transaction);
 
